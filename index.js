@@ -7,7 +7,7 @@ const express = require("express");
 // CONFIGURATION
 // =====================
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new TelegramBot(token); // no polling
+const bot = new TelegramBot(token, { webHook: true })
 const app = express();
 app.use(express.json());
 
@@ -325,6 +325,10 @@ bot.on("message", async (msg) => {
     await sendAudioWithHistory(partnerId, msg.audio.file_id);
   else if (msg.video) await sendVideoWithHistory(partnerId, msg.video.file_id);
   else if (msg.voice) await sendVoiceWithHistory(partnerId, msg.voice.file_id);
+});
+
+app.get("/", (req, res) => {
+  res.send("GhostChats bot is running 👻");
 });
 
 app.post("/webhook", (req, res) => {
