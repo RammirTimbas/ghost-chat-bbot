@@ -1,7 +1,6 @@
 const TelegramBot = require("node-telegram-bot-api");
 require('dotenv').config();
 const express = require("express");
-const bodyParser = require("body-parser");
 
 
 // =====================
@@ -10,7 +9,8 @@ const bodyParser = require("body-parser");
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token); // no polling
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
+
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_URL = process.env.WEBHOOK_URL; 
@@ -327,7 +327,20 @@ bot.on("message", async (msg) => {
   else if (msg.voice) await sendVoiceWithHistory(partnerId, msg.voice.file_id);
 });
 
+app.post("/webhook", (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+
 // =====================
 // READY
 // =====================
-console.log("👻 GhostChats bot fully running without call functionality!");
+app.listen(PORT, async () => {
+  const webhookUrl = `${WEBHOOK_URL}/webhook`;
+
+  await bot.setWebHook(webhookUrl);
+
+  console.log("👻 GhostChats webhook running at:", webhookUrl);
+});
+
