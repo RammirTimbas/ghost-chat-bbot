@@ -1,19 +1,14 @@
 const TelegramBot = require("node-telegram-bot-api");
-require('dotenv').config();
+require("dotenv").config();
 const express = require("express");
-
 
 // =====================
 // CONFIGURATION
 // =====================
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new TelegramBot(token, { webHook: true })
+const bot = new TelegramBot(token, { webHook: true });
 const app = express();
 app.use(express.json());
-
-
-const PORT = process.env.PORT || 3000;
-const WEBHOOK_URL = process.env.WEBHOOK_URL; 
 
 // =====================
 // DATA STRUCTURES
@@ -24,10 +19,6 @@ const reportedUsers = new Map(); // userId => number of reports
 const blockedUsers = new Map(); // userId => timestamp when block expires (0 = permanent)
 const chatHistory = new Map(); // userId => array of messageIds
 
-// =====================
-// CONSTANTS
-// =====================
-const MAX_REPORTS = 30;
 
 // =====================
 // HELPERS
@@ -306,6 +297,8 @@ bot.on("callback_query", async (query) => {
 // MESSAGE RELAY
 // =====================
 bot.on("message", async (msg) => {
+  if (!msg.from || msg.from.is_bot) return;
+
   const userId = msg.from.id;
 
   if (!(msg.text && msg.text.startsWith("/")))
@@ -327,24 +320,36 @@ bot.on("message", async (msg) => {
   else if (msg.voice) await sendVoiceWithHistory(partnerId, msg.voice.file_id);
 });
 
-app.get("/", (req, res) => {
-  res.send("GhostChats bot is running 👻");
-});
+const PORT = process.env.PORT || 3000;
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+
+app.get("/", (req, res) => res.send("GhostChats bot is running 👻"));
 
 app.post("/webhook", (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
+  try {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("Webhook error:", err);
+    res.sendStatus(500);
+  }
 });
 
+async function startBot() {
+  try {
+    // Start Express server first
+    app.listen(PORT, () => {
+      console.log(`🚀 Express server running on port ${PORT}`);
+    });
 
-// =====================
-// READY
-// =====================
-app.listen(PORT, async () => {
-  const webhookUrl = `${WEBHOOK_URL}/webhook`;
+    // Set Telegram webhook
+    const webhookUrl = `${WEBHOOK_URL}/webhook`;
+    await bot.setWebHook(webhookUrl);
+    console.log("👻 GhostChats webhook running at:", webhookUrl);
+  } catch (err) {
+    console.error("Failed to start bot:", err);
+  }
+}
 
-  await bot.setWebHook(webhookUrl);
-
-  console.log("👻 GhostChats webhook running at:", webhookUrl);
-});
+startBot();
 
